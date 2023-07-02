@@ -7,6 +7,7 @@ use Mojo::IOLoop;
 
 use Carp qw(croak carp);
 use MIME::Base64;
+use Scalar::Util;
 
 our $VERSION = '0.1';
 
@@ -25,8 +26,9 @@ sub new {
     return $self unless $str;
 
     my $url = Mojo::URL->new($str);
-    croak qq{Invalid CouchDB URI string "$str"}           unless $url->protocol =~ /^http(?:s)?$/;
-    croak qq{No database specified in connection string}  unless exists $url->path->parts->[0];
+    croak qq{Invalid CouchDB URI string "$str"} unless $url->protocol =~ /^http(?:s)?$/;
+    croak qq{No database specified in connection string}
+        unless exists $url->path->parts->[0];
     carp qq{No username or password provided for CouchDB} unless $username and $password;
 
     if ($username and $password) {
@@ -39,12 +41,52 @@ sub new {
     return $self;
 }
 
+sub create_db {
+    my $status = shift->_call('', undef, 'put')->result->code;
+
+    # 412 means it already exists.
+    return 1 if $status == 201 || $status == 412;
+
+    # 5xx responses
+    return undef;
+}
+
 sub save {
-    
+    my $self = shift;
+    my $doc  = shift;
+
+    croak qq{Invalid type supplied for document, expected hashref got: } . (reftype $doc)
+        unless (reftype($doc)->hash);
+    croak qq{Cannot call save without a document} unless (defined $doc);
+
+
+}
+
+sub save_many {
+    my $self = shift;
+    my $docs = shift;
+
+    croak qq{Cannot save many without a documents} unless (defined $docs);
+    croak qq{Invalid type supplied for documents, expected arrayref of hashref's got: }
+        . (reftype $docs)
+        unless (reftype($docs)->array);
+
+    return $self->_call('/bulk_docs', {docs => $docs}, 'post');
 }
 
 sub ua {
+    state $ua = Mojo::UserAgent->new;
+    return $ua;
+}
 
+sub _call {
+    my $self   = shift;
+    my $loc    = shift;
+    my $body   = shift;
+    my $method = shift;
+
+    return $self->ua->$method->(
+        ($self->url) => {authorization => $self->auth} => json => $body);
 }
 
 1;
@@ -69,15 +111,19 @@ Mojo::CouchDB
     };
 
     # Save your document to the database
-    my $id = $couch->save($book);
+    $book = $couch->save($book);
 
     # If _id is assigned to a hashref, save will update rather than create
-    $book->{_id} = $id;
+    say $book->{_id}; # Assigned when saving or getting
     $book->{title} = 'Dune';
     $book->{author} = 'Frank Herbert'
 
     # Re-save to update the document
-    $id = $couch->save($book);
+    $book = $couch->save($book);
 
     # Get the document as a hashref
     my $dune = $couch->get($id);
+
+    # You can also save many
+
+=cut
