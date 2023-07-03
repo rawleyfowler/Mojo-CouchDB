@@ -81,12 +81,16 @@ sub _call {
 
     my $url
         = $loc && $loc ne '' ? $self->url->to_string . "/$loc" : $self->url->to_string;
+    my $headers = {
+        Authorization => $self->auth,
+
+    };
 
     if ($body) {
-        return $self->ua->$method($url, {Authorization => $self->auth}, 'json', $body);
+        return $self->ua->$method($url, $headers, 'json', $body);
     }
 
-    return $self->ua->$method($url, {Authorization => $self->auth});
+    return $self->ua->$method($url, $headers);
 }
 
 1;

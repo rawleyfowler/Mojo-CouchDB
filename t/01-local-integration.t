@@ -8,7 +8,8 @@ use Mojo::IOLoop::Subprocess;
 use Mojo::Server::Daemon;
 use MIME::Base64;
 
-my $couch = Mojo::CouchDB->new('http://127.0.0.1:5984/database', 'foo', 'bar');
+my $port  = Mojo::IOLoop::Server->generate_port;
+my $couch = Mojo::CouchDB->new("http://127.0.0.1:$port/database", 'foo', 'bar');
 
 my $auth = 'Basic ' . encode_base64("foo:bar");
 
@@ -19,12 +20,11 @@ put '/database' => sub {
     return $c->rendered(201);
 };
 
-my $port   = Mojo::IOLoop::Server->generate_port;
 my $daemon = Mojo::Server::Daemon->new(app => app, listen => ["http://*:$port"]);
 
-# my $pid = Mojo::IOLoop::Subprocess->new(sub {
-#     $daemon->run;
-# });
+my $pid = Mojo::IOLoop::Subprocess->new->run(sub {
+    $daemon->run;
+});
 
 ok $couch->create_db, 'Did create succeed?';
 
