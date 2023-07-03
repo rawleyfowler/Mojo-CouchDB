@@ -32,7 +32,7 @@ sub new {
     carp qq{No username or password provided for CouchDB} unless $username and $password;
 
     if ($username and $password) {
-        $self->{auth} = 'Basic ' . encode_base64("$username:$password");
+        chomp($self->{auth} = 'Basic ' . encode_base64("$username:$password"));
     }
 
     $self->{url} = $url;
@@ -82,14 +82,11 @@ sub _call {
     my $url
         = $loc && $loc ne '' ? $self->url->to_string . "/$loc" : $self->url->to_string;
 
-    say $method;
-    say $url;
-
     if ($body) {
-        return $self->ua->$method->($url, {authorization => $self->auth}, 'json', $body);
+        return $self->ua->$method($url, {Authorization => $self->auth}, 'json', $body);
     }
 
-    return $self->ua->put->($url, {authorization => $self->auth});
+    return $self->ua->$method($url, {Authorization => $self->auth});
 }
 
 1;
