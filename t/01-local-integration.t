@@ -3,6 +3,8 @@ use Test::More;
 use Mojolicious::Lite -signatures;
 use Mojo::CouchDB;
 use Mojo::IOLoop;
+use Mojo::IOLoop::Server;
+use Mojo::IOLoop::Subprocess;
 use Mojo::Server::Daemon;
 use MIME::Base64;
 
@@ -17,10 +19,12 @@ put '/database' => sub {
     return $c->rendered(201);
 };
 
-my $port   = Mojo::IOLoop->generate_port;
-my $daemon = Mojo::Server::Daemon->new(app => app, listen => "http://*:$port");
+my $port   = Mojo::IOLoop::Server->generate_port;
+my $daemon = Mojo::Server::Daemon->new(app => app, listen => ["http://*:$port"]);
 
-$daemon->run;
+# my $pid = Mojo::IOLoop::Subprocess->new(sub {
+#     $daemon->run;
+# });
 
 ok $couch->create_db, 'Did create succeed?';
 

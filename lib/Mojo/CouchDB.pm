@@ -9,16 +9,16 @@ use Carp qw(croak carp);
 use MIME::Base64;
 use Scalar::Util;
 
+use feature 'say';
+
 our $VERSION = '0.1';
 
-Mojo::IOLoop->start unless Mojo::IOLoop->is_running;
-
 has 'url';
-has 'conn';
 has 'auth';
+has ua => sub { Mojo::UserAgent->new };
 
 sub new {
-    my $self     = shift;
+    my $self     = shift->SUPER::new;
     my $str      = shift;
     my $username = shift;
     my $password = shift;
@@ -35,14 +35,13 @@ sub new {
         $self->{auth} = 'Basic ' . encode_base64("$username:$password");
     }
 
-    $self->{url}  = $url;
-    $self->{conn} = Mojo::UserAgent->new;
+    $self->{url} = $url;
 
     return $self;
 }
 
 sub create_db {
-    my $status = shift->_call('', undef, 'put')->result->code;
+    my $status = shift->_call('', 'put')->result->code;
 
     # 412 means it already exists.
     return 1 if $status == 201 || $status == 412;
@@ -71,22 +70,26 @@ sub save_many {
         . (reftype $docs)
         unless (reftype($docs)->array);
 
-    return $self->_call('/bulk_docs', {docs => $docs}, 'post');
-}
-
-sub ua {
-    state $ua = Mojo::UserAgent->new;
-    return $ua;
+    return $self->_call('/bulk_docs', 'post', {docs => $docs});
 }
 
 sub _call {
     my $self   = shift;
     my $loc    = shift;
-    my $body   = shift;
     my $method = shift;
+    my $body   = shift;
 
-    return $self->ua->$method->(
-        ($self->url) => {authorization => $self->auth} => json => $body);
+    my $url
+        = $loc && $loc ne '' ? $self->url->to_string . "/$loc" : $self->url->to_string;
+
+    say $method;
+    say $url;
+
+    if ($body) {
+        return $self->ua->$method->($url, {authorization => $self->auth}, 'json', $body);
+    }
+
+    return $self->ua->put->($url, {authorization => $self->auth});
 }
 
 1;
