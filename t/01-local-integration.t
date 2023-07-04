@@ -11,7 +11,7 @@ use MIME::Base64;
 my $port  = Mojo::IOLoop::Server->generate_port;
 my $couch = Mojo::CouchDB->new("http://127.0.0.1:$port/database", 'foo', 'bar');
 
-my $auth = 'Basic ' . encode_base64("foo:bar");
+chomp(my $auth = 'Basic ' . encode_base64("foo:bar"));
 
 put '/database' => sub {
     my $c = shift;
@@ -20,11 +20,15 @@ put '/database' => sub {
     return $c->rendered(201);
 };
 
-my $daemon = Mojo::Server::Daemon->new(app => app, listen => ["http://*:$port"]);
+my $daemon = Mojo::Server::Daemon->new(app => app, listen => ["http://127.0.0.1:$port"]);
 
-my $pid = Mojo::IOLoop::Subprocess->new->run(sub {
+my $sub = Mojo::IOLoop::Subprocess->new;
+
+$sub->run(sub {
     $daemon->run;
 });
+
+sleep 1;
 
 ok $couch->create_db, 'Did create succeed?';
 
