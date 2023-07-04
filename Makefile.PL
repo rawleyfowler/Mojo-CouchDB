@@ -20,9 +20,10 @@ WriteMakefile(
         resources      => {
             bugtracker => {web => 'https://github.com/rawleyfowler/Mojo-CouchDB/issues'},
             license    => ['http://www.opensource.org/licenses/artistic-license-2.0'],
-            repository => {type => 'git', url => 'https://github.com/rawleyfowler/Mojo-CouchDB'}
+            repository =>
+                {type => 'git', url => 'https://github.com/rawleyfowler/Mojo-CouchDB'}
         },
     },
-    PREREQ_PM => {Mojolicious => '8.50'},
-    test      => {TESTS       => 't/*.t t/*/*.t'}
+    PREREQ_PM => {'Test::Exception' => '0.43', 'Mojolicious' => '8.50'},
+    test      => {TESTS             => 't/*.t t/*/*.t'}
 );

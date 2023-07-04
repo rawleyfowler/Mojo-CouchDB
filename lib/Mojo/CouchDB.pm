@@ -144,6 +144,10 @@ sub _find {
     my $self = shift;
     my $sc   = shift;
 
+    croak qq{Invalid type supplied for search criteria, expected hashref got: undef }
+        unless $sc;
+    croak qq{Invalid type supplied for search criteria, expected hashref got: scalar }
+        unless reftype $sc;
     croak qq{Invalid type supplied for search criteria, expected hashref got: }
         . reftype $sc
         unless reftype($sc) eq 'HASH';
@@ -155,6 +159,9 @@ sub _index {
     my $self = shift;
     my $idx  = shift;
 
+    croak qq{Invalid type supplied for index, expected hashref got: undef } unless $idx;
+    croak qq{Invalid type supplied for index, expected hashref got: scalar }
+        unless reftype $idx;
     croak qq{Invalid type supplied for index, expected hashref got: } . reftype $idx
         unless reftype($idx) eq 'HASH';
 
@@ -165,6 +172,9 @@ sub _save {
     my $self = shift;
     my $doc  = shift;
 
+    croak qq{No save argument specified, expected hashref got: undef } unless $doc;
+    croak qq{Invalid type supplied for document, expected hashref got: scalar }
+        unless reftype $doc;
     croak qq{Invalid type supplied for document, expected hashref got: } . (reftype $doc)
         unless reftype($doc) eq 'HASH';
     croak qq{Cannot call save without a document} unless (defined $doc);
@@ -176,7 +186,10 @@ sub _save_many {
     my $self = shift;
     my $docs = shift;
 
-    croak qq{Cannot save many without a documents} unless (defined $docs);
+    croak qq{Cannot save many without a documents} unless defined $docs;
+    croak
+        qq{Invalid type supplied for documents, expected arrayref of hashref's got: scalar }
+        unless reftype $docs;
     croak qq{Invalid type supplied for documents, expected arrayref of hashref's got: }
         . (reftype $docs)
         unless (reftype($docs) eq 'ARRAY');

@@ -13,14 +13,12 @@ chomp(my $auth = 'Basic ' . encode_base64("foo:bar"));
 
 put '/database' => sub {
     my $c = shift;
-    ok 1, 'Is database created call working?';
     is $c->req->headers->to_hash->{Authorization}, $auth, 'Is auth header correct?';
     return $c->rendered(201);
 };
 
 post '/database' => sub {
-    my $c = shift;
-    ok 1, 'Is database create doc call working?';
+    my $c    = shift;
     my $json = $c->req->json;
 
     $json->{_id} = 'foobar';
@@ -46,19 +44,16 @@ my $daemon = Mojo::Server::Daemon->new(
 );
 my $port = $daemon->start->ports->[0];
 $couch->{url} = Mojo::URL->new("http://127.0.0.1:$port/database");
+ok $couch->create_db;
+Mojo::IOLoop->start;
 
-ok $couch->create_db, 'Did create succeed?';
-
-is $couch->save({name => 'foo'})->{name}, 'foo',    'Did save succeed?';
-is $couch->save({name => 'foo'})->{_id},  'foobar', 'Did save get id?';
-
-dies_ok { $couch->save } 'Did save die on no args?';
-dies_ok { $couch->save(['foo']) } 'Did save die on bad args?';
-dies_ok { $couch->save_many } 'Did save many die on no args?';
-dies_ok { $couch->save_many({name => 'foo'}) } 'Did save many die on bad args?';
-dies_ok { $couch->index } 'Did index die on no args?';
-dies_ok { $couch->index(['foo']) } 'Did index die on bad args?';
-dies_ok { $couch->find } 'Did find die on no args?';
-dies_ok { $couch->find('foo') } 'Did find die on bad args?';
+dies_ok { $couch->find_p } 'Does find_p die with no input?';
+dies_ok { $couch->find_p('foo') } 'Does find_p die with non-hash input?';
+dies_ok { $couch->index_p } 'Does index_p die with no input?';
+dies_ok { $couch->index_p(123) } 'Does index_p die with bad input?';
+dies_ok { $couch->save_many_p } 'Does save_many_p die with no input?';
+dies_ok { $couch->save_many_p('foo') } 'Does save_may_p die with bad input?';
+dies_ok { $couch->save_p } 'Does save_p die with no input?';
+dies_ok { $couch->save_p(123) } 'Does save_p die with bad input?';
 
 done_testing;
