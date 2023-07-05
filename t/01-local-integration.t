@@ -60,5 +60,7 @@ dies_ok { $couch->index } 'Did index die on no args?';
 dies_ok { $couch->index(['foo']) } 'Did index die on bad args?';
 dies_ok { $couch->find } 'Did find die on no args?';
 dies_ok { $couch->find('foo') } 'Did find die on bad args?';
+dies_ok { $couch->all_docs } 'Did all_docs die on no args?';
+dies_ok { $couch->all_docs(123) } 'Did all_docs die on bad args?';
 
 done_testing;
