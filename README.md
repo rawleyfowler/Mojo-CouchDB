@@ -16,15 +16,22 @@ my $book = {
 };
 
 # Save your document to the database
-$book = $couch->save($book);
+my $save = $couch->save($book);
+
+$book->{_id} = $save->{_id};
+$book->{_rev} = $save->{_rev};
 
 # If _id is assigned to a hashref, save will update rather than create
-say $book->{_id}; # Assigned when saving or getting
+say $book->{_id};
+say $book->{_rev};
+
 $book->{title} = 'Dune';
 $book->{author} = 'Frank Herbert'
 
 # Re-save to update the document
-$book = $couch->save($book);
+$save = $couch->save($book);
+
+say $save->{_id}; # Same id as above
 
 # Get the document as a hashref
 my $dune = $couch->find({ _id => $book->{_id} })->{docs}->[0];
