@@ -9,6 +9,7 @@ use Carp qw(croak carp);
 use URI;
 use MIME::Base64;
 use Scalar::Util qw(reftype);
+use Data::Dumper;
 
 our $VERSION = '0.1';
 
@@ -26,30 +27,27 @@ sub all_docs_p {
     my $self  = shift;
     my $query = $self->_to_query(shift);
 
-    return $self->_call('_all_docs' . $query, 'get_p')
+    return $self->_call_p('_all_docs' . $query, 'get_p')
         ->then(sub { return shift->res->json });
 }
 
 sub create_db {
-    my $status = shift->_call('', 'put')->result->code;
+    my $s = shift->_call('', 'put');
 
-    # 412 means it already exists.
-    return 1 if $status == 201 || $status == 412;
-
-    # 5xx responses
-    return undef;
+    print Dumper($s);
+    return $s;
 }
 
 sub find {
     my $self = shift;
     my $sc   = shift;
-    return $self->_find($sc)->_call('_find', 'post', $sc)->result->json;
+    return $self->_find($sc)->_call('_find', 'post', $sc);
 }
 
 sub find_p {
     my $self = shift;
     my $sc   = shift;
-    return $self->_find($sc)->_call('_find', 'post_p', $sc)
+    return $self->_find($sc)->_call_p('_find', 'post_p', $sc)
         ->then(sub { return shift->res->json });
 }
 
@@ -57,15 +55,14 @@ sub index {
     my $self = shift;
     my $idx  = shift;
 
-    return $self->_index($idx)->_call('_index', 'post', $idx)->result->json;
+    return $self->_index($idx)->_call('_index', 'post', $idx);
 }
 
 sub index_p {
     my $self = shift;
     my $idx  = shift;
 
-    return $self->_index($idx)->_call('_index', 'post_p', $idx)
-        ->then(sub { return shift->res->json });
+    return $self->_index($idx)->_call_p('_index', 'post_p', $idx);
 }
 
 sub new {
@@ -96,29 +93,26 @@ sub new {
 sub save {
     my $self = shift;
     my $doc  = shift;
-    return $self->_save($doc)->_call('', 'post', $doc)->result->json;
+    return $self->_save($doc)->_call('', 'post', $doc);
 }
 
 sub save_p {
     my $self = shift;
     my $doc  = shift;
-    return $self->_save($doc)->_call('', 'post_p', $doc)
-        ->then(sub { return shift->res->json });
+    return $self->_save($doc)->_call_p('', 'post_p', $doc);
 }
 
 sub save_many {
     my $self = shift;
     my $docs = shift;
-    return $self->_save_many($docs)->_call('/bulk_docs', 'post', {docs => $docs})
-        ->result->json;
+    return $self->_save_many($docs)->_call('/bulk_docs', 'post', {docs => $docs});
 }
 
 sub save_many_p {
     my $self = shift;
     my $docs = shift;
 
-    return $self->_save_many($docs)->_call('/bulk_docs', 'post_p', {docs => $docs})
-        ->then(sub { return shift->res->json });
+    return $self->_save_many($docs)->_call_p('/bulk_docs', 'post_p', {docs => $docs});
 }
 
 sub _call {
@@ -129,15 +123,50 @@ sub _call {
 
     my $url = $loc && $loc ne '' ? $self->url->to_string . "$loc" : $self->url->to_string;
 
-    print $url . "\n" if $ENV{MOJO_COUCHDB_DEBUG};
+    my $headers = {Authorization => $self->auth};
+
+    my $r
+        = ($body
+        ? $self->ua->$method($url, $headers, 'json', $body)
+        : $self->ua->$method($url, $headers))->result;
+
+    croak 'CouchDB encountered an error: ' . $r->json->{error}
+        if $r->json and exists($r->json->{error});
+    croak 'CouchDB encountered an error: ' . $r->code . ' ' . $r->json
+        unless $r->is_success;
+
+    return $r->json || {};
+}
+
+sub _call_p {
+    my $self   = shift;
+    my $loc    = shift;
+    my $method = shift;
+    my $body   = shift;
+
+    my $url = $loc && $loc ne '' ? $self->url->to_string . "$loc" : $self->url->to_string;
 
     my $headers = {Authorization => $self->auth};
 
     if ($body) {
-        return $self->ua->$method($url, $headers, 'json', $body);
+        return $self->ua->$method($url, $headers, 'json', $body)->then(sub {
+            my $r = shift;
+
+            croak 'CouchDB encountered an error: ' . $r->res->json->{error}
+                if (exists $r->res->json->{error});
+
+            return $r->res->json;
+        });
     }
 
-    return $self->ua->$method($url, $headers);
+    return $self->ua->$method($url, $headers)->then(sub {
+        my $r = shift;
+
+        croak 'CouchDB encountered an error: ' . $r->res->json->{error}
+            if (exists $r->res->json->{error});
+
+        return $r->res->json;
+    });
 }
 
 sub _find {
@@ -201,7 +230,11 @@ sub _to_query {
     my $self  = shift;
     my $query = shift;
 
-    return '' unless $query && reftype($query) eq 'HASH';
+    croak qq{Invalid type supplied for query, expected hashref got undef} unless $query;
+    croak qq{Invalid type supplied for query, expected hashref got scalar}
+        unless reftype $query;
+    croak qq{Invalid type supplied for query, expected hashref got: } . reftype($query)
+        unless $query && reftype($query) eq 'HASH';
 
     my $t_uri = URI->new('', 'http');
     $t_uri->query_form(%$query);

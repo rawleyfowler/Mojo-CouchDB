@@ -55,5 +55,7 @@ dies_ok { $couch->save_many_p } 'Does save_many_p die with no input?';
 dies_ok { $couch->save_many_p('foo') } 'Does save_may_p die with bad input?';
 dies_ok { $couch->save_p } 'Does save_p die with no input?';
 dies_ok { $couch->save_p(123) } 'Does save_p die with bad input?';
+dies_ok { $couch->all_docs_p } 'Does all_docs_p die with no input?';
+dies_ok { $couch->all_docs_p(123) } 'Does all_docs_p die with bad input?';
 
 done_testing;
