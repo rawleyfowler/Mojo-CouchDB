@@ -33,7 +33,13 @@ post '/database/_bulk_docs' => sub {
     ok 1, 'Is bulk doc call working?';
     my $json = $c->req->json;
     is len(@$json), 2, 'Did data come over correctly for bulk docs?';
-    return $json;
+    return $c->render(json => $json);
+};
+
+get '/database/foo' => sub {
+    my $c = shift;
+    ok 1, 'Did hit get?';
+    return $c->render(json => {_id => 'foo', name => 'bar'});
 };
 
 my $couch  = Mojo::CouchDB->new("http://127.0.0.1/database", 'foo', 'bar');
@@ -52,6 +58,10 @@ ok $couch->create_db, 'Did create succeed?';
 is $couch->save({name => 'foo'})->{name}, 'foo',    'Did save succeed?';
 is $couch->save({name => 'foo'})->{_id},  'foobar', 'Did save get id?';
 
+is $couch->get(\'foo')->{_id},  'foo', 'Did get succeed?';
+is $couch->get(\'foo')->{name}, 'bar', 'Did get succeed 2?';
+dies_ok { $couch->get('flub') } 'Does get die with 404?';
+
 dies_ok { $couch->save } 'Did save die on no args?';
 dies_ok { $couch->save(['foo']) } 'Did save die on bad args?';
 dies_ok { $couch->save_many } 'Did save many die on no args?';
@@ -62,5 +72,7 @@ dies_ok { $couch->find } 'Did find die on no args?';
 dies_ok { $couch->find('foo') } 'Did find die on bad args?';
 dies_ok { $couch->all_docs } 'Did all_docs die on no args?';
 dies_ok { $couch->all_docs(123) } 'Did all_docs die on bad args?';
+dies_ok { $couch->get } 'Did get die on no args?';
+dies_ok { $couch->get({foo => 'bar'}) } 'Did get die on bad args?';
 
 done_testing;

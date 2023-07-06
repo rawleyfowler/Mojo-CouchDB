@@ -13,3 +13,4 @@
 !MANIFEST.SKIP
 /META.*
 /MYMETA.*
+/*.gz

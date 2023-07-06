@@ -16,25 +16,26 @@ my $book = {
 };
 
 # Save your document to the database
-my $save = $couch->save($book);
-
-$book->{_id} = $save->{_id};
-$book->{_rev} = $save->{_rev};
+$book = $couch->save($book);
 
 # If _id is assigned to a hashref, save will update rather than create
-say $book->{_id};
-say $book->{_rev};
+say $book->{_id}; # Automatically assigned when saving
+say $book->{_rev}; # Automatically assigned when saving
 
 $book->{title} = 'Dune';
 $book->{author} = 'Frank Herbert'
 
 # Re-save to update the document
-$save = $couch->save($book);
+$book = $couch->save($book);
 
-say $save->{_id}; # Same id as above
+say $book->{_id}; # Same id as above
 
 # Get the document as a hashref
-my $dune = $couch->find({ _id => $book->{_id} })->{docs}->[0];
+my $dune = $couch->get($book->{id});
+
+# Find first 5 books
+# See https://docs.couchdb.org/en/stable/api/database/find.html for the semantics of finding.
+my $books = $couch->find({ limit => 5, skip => 0, fields => [ 'title', 'author' ] });
 ```
 
 ## Installation
@@ -58,7 +59,7 @@ helper user_db => sub {
 
 get '/:user' => sub {
     my $c    = shift;
-    my $user = $c->user_db->find({ _id => $c->param('user') })->{docs}->[0]
+    my $user = $c->user_db->get($c->param('user'))
        || return $c->rendered(404);
     return $c->render(json => $user);
 };

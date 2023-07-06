@@ -4,12 +4,12 @@ use Mojo::Base -base;
 use Mojo::URL;
 use Mojo::UserAgent;
 use Mojo::IOLoop;
+use Mojo::JSON qw(encode_json);
 
 use Carp qw(croak carp);
 use URI;
 use MIME::Base64;
 use Scalar::Util qw(reftype);
-use Data::Dumper;
 
 our $VERSION = '0.2';
 
@@ -32,10 +32,7 @@ sub all_docs_p {
 }
 
 sub create_db {
-    my $s = shift->_call('', 'put');
-
-    print Dumper($s);
-    return $s;
+    return shift->_call('', 'put');
 }
 
 sub find {
@@ -55,19 +52,16 @@ sub get {
     my $self = shift;
     my $id   = shift;
 
-    $id = $$id while (reftype($id) eq 'SCALAR');
-
-    return $self->_get($id)->_call("$id", "get");
+    $id = $$id while (reftype($id));
+    return $self->_get($id)->_call("/$id", 'get');
 }
 
 sub get_p {
     my $self = shift;
     my $id   = shift;
 
-
-    $id = $$id while (reftype($id) eq 'SCALAR');
-
-    return $self->_get($id)->_call_p("$id", "get");
+    $id = $$id while (reftype($id));
+    return $self->_get($id)->_call_p("/$id", 'get');
 }
 
 sub index {
@@ -112,13 +106,25 @@ sub new {
 sub save {
     my $self = shift;
     my $doc  = shift;
-    return $self->_save($doc)->_call('', 'post', $doc);
+    my $res  = $self->_save($doc)->_call('', 'post', $doc);
+
+    $doc->{_id}  = $res->{_id};
+    $doc->{_rev} = $res->{_rev};
+
+    return $doc;
 }
 
 sub save_p {
     my $self = shift;
     my $doc  = shift;
-    return $self->_save($doc)->_call_p('', 'post_p', $doc);
+    return $self->_save($doc)->_call_p('', 'post_p', $doc)->then(sub {
+        my $res = shift;
+
+        $doc->{_id}  = $res->{_id};
+        $doc->{_rev} = $res->{_rev};
+
+        return $doc;
+    });
 }
 
 sub save_many {
@@ -151,7 +157,7 @@ sub _call {
 
     croak 'CouchDB encountered an error: ' . $r->json->{error}
         if $r->json and exists($r->json->{error});
-    croak 'CouchDB encountered an error: ' . $r->code . ' ' . $r->json
+    croak 'CouchDB encountered an error: ' . $r->code . ' ' . encode_json($r->json)
         unless $r->is_success;
 
     return $r->json || {};
@@ -183,6 +189,10 @@ sub _call_p {
 
         croak 'CouchDB encountered an error: ' . $r->res->json->{error}
             if (exists $r->res->json->{error});
+        croak 'CouchDB encountered an error: '
+            . $r->res->code . ' '
+            . encode_json($r->res->json)
+            if (!$r->is_success);
 
         return $r->res->json;
     });
