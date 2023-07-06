@@ -11,7 +11,7 @@ use MIME::Base64;
 use Scalar::Util qw(reftype);
 use Data::Dumper;
 
-our $VERSION = '0.1';
+our $VERSION = '0.2';
 
 has 'url';
 has 'auth';
@@ -49,6 +49,25 @@ sub find_p {
     my $sc   = shift;
     return $self->_find($sc)->_call_p('_find', 'post_p', $sc)
         ->then(sub { return shift->res->json });
+}
+
+sub get {
+    my $self = shift;
+    my $id   = shift;
+
+    $id = $$id while (reftype($id) eq 'SCALAR');
+
+    return $self->_get($id)->_call("$id", "get");
+}
+
+sub get_p {
+    my $self = shift;
+    my $id   = shift;
+
+
+    $id = $$id while (reftype($id) eq 'SCALAR');
+
+    return $self->_get($id)->_call_p("$id", "get");
 }
 
 sub index {
@@ -184,6 +203,15 @@ sub _find {
     return $self;
 }
 
+sub _get {
+    my $self = shift;
+    my $id   = shift;
+
+    croak qq{Invalid type supplied for id, expected scalar got: undef} unless $id;
+
+    return $self;
+}
+
 sub _index {
     my $self = shift;
     my $idx  = shift;
@@ -252,118 +280,124 @@ Mojo::CouchDB
 
 =head1 SYNOPSIS
 
-      use Mojo::CouchDB;
+    use Mojo::CouchDB;
 
-      # Create a CouchDB instance
-      my $couch = Mojo::CouchDB->new('http://localhost:6984/books', 'username', 'password');
+    # Create a CouchDB instance
+    my $couch = Mojo::CouchDB->new('http://localhost:6984/books', 'username', 'password');
 
-      # Make a document
-      my $book = {
-          title => 'Nineteen Eighty Four',
-          author => 'George Orwell'
-      };
+    # Make a document
+    my $book = {
+        title => 'Nineteen Eighty Four',
+        author => 'George Orwell'
+    };
 
-      # Save your document to the database
-      $book = $couch->save($book);
+    # Save your document to the database
+    $book = $couch->save($book);
 
-      # If _id is assigned to a hashref, save will update rather than create
-      say $book->{_id}; # Assigned when saving or getting
-      $book->{title} = 'Dune';
-      $book->{author} = 'Frank Herbert'
+    # If _id is assigned to a hashref, save will update rather than create
+    say $book->{_id}; # Assigned when saving or getting
+    $book->{title} = 'Dune';
+    $book->{author} = 'Frank Herbert'
 
-      # Re-save to update the document
-      $book = $couch->save($book);
+    # Re-save to update the document
+    $book = $couch->save($book);
 
-      # Get the document as a hashref
-      my $dune = $couch->find({ _id => $book->{_id} });
+    # Get the document as a hashref
+    my $dune = $couch->find({ _id => $book->{_id} });
 
-      # You can also save many documents at a time
-      my $books = $couch->save_many([{title => 'book', author => 'John'}, { title => 'foo', author => 'bar' }])->{docs};
+    # You can also save many documents at a time
+    my $books = $couch->save_many([{title => 'book', author => 'John'}, { title => 'foo', author => 'bar' }])->{docs};
 
 =head2 all_docs
 
-      $couch->all_docs({ limit => 10, skip => 5});
+    $couch->all_docs({ limit => 10, skip => 5});
 
-    Retrieves a list of all of the documents in the database. This is packaged as a hashref with
-    C<offset>: the offset of the query, C<rows>: the documents in the page, and C<total_rows>: the number of rows returned in the dataset.
+Retrieves a list of all of the documents in the database. This is packaged as a hashref with
+C<offset>: the offset of the query, C<rows>: the documents in the page, and C<total_rows>: the number of rows returned in the dataset.
 
-    Optionally, can take a hashref of query parameters that correspond with the CouchDB L<view query specification|https://docs.couchdb.org/en/stable/api/ddoc/views.html#db-design-design-doc-view-view-name>.
+Optionally, can take a hashref of query parameters that correspond with the CouchDB L<view query specification|https://docs.couchdb.org/en/stable/api/ddoc/views.html#db-design-design-doc-view-view-name>.
 
 =head2 all_docs_p
 
-      $couch->all_docs_p({ limit => 10, skip => 5 });
+    $couch->all_docs_p({ limit => 10, skip => 5 });
 
-    See L<\"all_docs">, except returns the result in a L<Mojo::Promise>.
+See L<\"all_docs">, except returns the result in a L<Mojo::Promise>.
     
 =head2 create_db
 
-      $couch->create_db
+    $couch->create_db
 
-    Create the database, returns C<1> if succeeds or if it already exsits, else returns C<undef>.
+Create the database, returns C<1> if succeeds or if it already exsits, else returns C<undef>.
 
 =head2 find
 
-      $couch->find($search_criteria);
+    $couch->find($search_criteria);
 
-    Searches for records based on the search criteria specified. The search criteria 
-    hashref provided for searching must follow the CouchDB L<_find specification|https://docs.couchdb.org/en/stable/api/database/find.html#selector-syntax>.
+Searches for documents based on the search criteria specified. The search criteria hashref provided for searching must follow the CouchDB L<_find specification|https://docs.couchdb.org/en/stable/api/database/find.html#selector-syntax>.
 
-    Returns a hashref with two fields: C<docs> and C<execution_stats>. C<docs> contains an arrayref of found documents, while
-    C<execution_stats> contains a hashref of various statistics about the query you ran to find the documents.
+Returns a hashref with two fields: C<docs> and C<execution_stats>. C<docs> contains an arrayref of found documents, while
+C<execution_stats> contains a hashref of various statistics about the query you ran to find the documents.
 
 =head2 find_p
 
-      $couch->find_p($search_criteria);
+    $couch->find_p($search_criteria);
 
-    See L<\"find">, except returns the result asynchronously in a L<Mojo::Promise>.
+See L<\"find">, except returns the result asynchronously in a L<Mojo::Promise>.
+
+=head2 get
+
+    $couch->get($id);
+
+Finds a document by a given id. Dies if it can't find the document. Returns the document in hashref form.
+
+=head2 get_p
+
+    $couch->get_p($id);
+
+See L<\"get">, except returns the result asynchronously in a L<Mojo::Promise>.
 
 =head2 index
 
-      $couch->index($idx);
+    $couch->index($idx);
 
-    Creates an index, where C<$idx> is a hashref following the CouchDB L<mango specification|https://docs.couchdb.org/en/stable/api/database/find.html#db-index>.
-    Returns the result of the index creation.
+Creates an index, where C<$idx> is a hashref following the CouchDB L<mango specification|https://docs.couchdb.org/en/stable/api/database/find.html#db-index>. Returns the result of the index creation.
 
 =head2 index_p
 
-      $couch->index_p($idx);
+    $couch->index_p($idx);
 
-    See L<\"index">, except returns the result asynchronously in a L<Mojo::Promise>.
+See L<\"index">, except returns the result asynchronously in a L<Mojo::Promise>.
 
 =head2 new
 
-      my $url   = 'https://127.0.0.1:5984/my_database';
-      my $couch = Mojo::CouchDB->new($url, $username, $password);
+    my $url   = 'https://127.0.0.1:5984/my_database';
+    my $couch = Mojo::CouchDB->new($url, $username, $password);
 
-    Creates an instance of L<\"Mojo::CouchDB">. The URL specified must include the protocol either C<http> or C<https> as well
-    as the port your CouchDB instance is using, and the name of the database you want to manipulate.
+Creates an instance of L<\"Mojo::CouchDB">. The URL specified must include the protocol either C<http> or C<https> as well as the port your CouchDB instance is using, and the name of the database you want to manipulate.
 
 =head2 save
 
-      $couch->save($document);
+    $couch->save($document);
 
-    Saves a document (hashref) to the database. If the C<_id> field is provided, it will update if it already exists.
-    If you provide both the C<_id> and C<_rev> field, that specific revision will be updated. Returns a hashref that corresponds
-    to the CouchDB C<POST /{db}> specification.
+Saves a document (hashref) to the database. If the C<_id> field is provided, it will update if it already exists. If you provide both the C<_id> and C<_rev> field, that specific revision will be updated. Returns a hashref that corresponds to the CouchDB C<POST /{db}> specification.
 
 =head2 save_p
 
-      $couch->save_p($document);
+    $couch->save_p($document);
 
-    Does the same as L<\"save"> but instead returns the result asynchronously in a L<Mojo::Promise>.
+Does the same as L<\"save"> but instead returns the result asynchronously in a L<Mojo::Promise>.
 
 =head2 save_many
 
-      $couch->save_many($documents);
+    $couch->save_many($documents);
 
-    Saves an arrayref of documents (hashrefs) to the database. Each document follows the same rules as L<\"save">. Returns an
-    arrayref of the documents you saved with the C<_id> and C<_rev> fields filled.
+Saves an arrayref of documents (hashrefs) to the database. Each document follows the same rules as L<\"save">. Returns an arrayref of the documents you saved with the C<_id> and C<_rev> fields filled.
 
 =head2 save_many_p
 
-      $couch->save_many_p($documents);
+    $couch->save_many_p($documents);
 
-    See L<\"save_many">, except returns the result asynchronously in a L<Mojo::Promise>.
+See L<\"save_many">, except returns the result asynchronously in a L<Mojo::Promise>.
 
 =head1 API
 
