@@ -10,8 +10,9 @@ use Carp qw(croak carp);
 use URI;
 use MIME::Base64;
 use Scalar::Util qw(reftype);
+use Storable     qw(dclone);
 
-our $VERSION = '0.2';
+our $VERSION = '0.3.1';
 
 has 'url';
 has 'auth';
@@ -108,10 +109,11 @@ sub save {
     my $doc  = shift;
     my $res  = $self->_save($doc)->_call('', 'post', $doc);
 
-    $doc->{_id}  = $res->{_id};
-    $doc->{_rev} = $res->{_rev};
+    my $dc = dclone $doc;
+    $dc->{_id}  = $res->{_id};
+    $dc->{_rev} = $res->{_rev};
 
-    return $doc;
+    return $dc;
 }
 
 sub save_p {
@@ -120,8 +122,9 @@ sub save_p {
     return $self->_save($doc)->_call_p('', 'post_p', $doc)->then(sub {
         my $res = shift;
 
-        $doc->{_id}  = $res->{_id};
-        $doc->{_rev} = $res->{_rev};
+        my $dc = dclone $doc;
+        $dc->{_id}  = $res->{_id};
+        $dc->{_rev} = $res->{_rev};
 
         return $doc;
     });
@@ -313,7 +316,7 @@ Mojo::CouchDB
     $book = $couch->save($book);
 
     # Get the document as a hashref
-    my $dune = $couch->find({ _id => $book->{_id} });
+    my $dune = $couch->get($book->{_id});
 
     # You can also save many documents at a time
     my $books = $couch->save_many([{title => 'book', author => 'John'}, { title => 'foo', author => 'bar' }])->{docs};
