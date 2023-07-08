@@ -24,6 +24,6 @@ WriteMakefile(
                 {type => 'git', url => 'https://github.com/rawleyfowler/Mojo-CouchDB'}
         },
     },
-    PREREQ_PM => {'Test::Exception' => '0.43', 'Mojolicious' => '8.50'},
+    PREREQ_PM => {'Test::Exception' => '0.43', 'Mojolicious' => '8.50', 'URI' => '5.19'},
     test      => {TESTS             => 't/*.t t/*/*.t'}
 );
