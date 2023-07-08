@@ -12,7 +12,7 @@ use MIME::Base64;
 use Scalar::Util qw(reftype);
 use Storable     qw(dclone);
 
-our $VERSION = '0.4';
+our $VERSION = '0.5';
 
 has 'url';
 has 'auth';
