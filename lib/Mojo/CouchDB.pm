@@ -103,6 +103,7 @@ Creates an instance of L<"Mojo::CouchDB">. The URL specified must include the pr
 =over 2
 
 =item * L<Mojo::CouchDB>
+
 =item * L<Mojo::CouchDB::DB>
 
 =back
