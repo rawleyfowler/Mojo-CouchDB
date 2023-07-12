@@ -42,16 +42,19 @@ get '/database/foo' => sub {
     return $c->render(json => {_id => 'foo', name => 'bar'});
 };
 
-my $couch  = Mojo::CouchDB->new("http://127.0.0.1/database", 'foo', 'bar');
+my $c      = Mojo::CouchDB->new("http://127.0.0.1", 'foo', 'bar');
+my $ioloop = Mojo::IOLoop->new;
 my $daemon = Mojo::Server::Daemon->new(
     app                => app,
     listen             => ["http://127.0.0.1"],
-    ioloop             => $couch->ua->ioloop,
+    ioloop             => $ioloop,
     silent             => 1,
     keep_alive_timeout => 0.5
 );
 my $port = $daemon->start->ports->[0];
-$couch->{url} = Mojo::URL->new("http://127.0.0.1:$port/database");
+$c->{url} = Mojo::URL->new("http://127.0.0.1:$port/database");
+my $couch = $c->db('database');
+$couch->ua->{ioloop} = $ioloop;
 
 ok $couch->create_db, 'Did create succeed?';
 
