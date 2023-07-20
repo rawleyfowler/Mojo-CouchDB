@@ -7,35 +7,33 @@ Perl, a lot of fun.
 use Mojo::CouchDB;
 
 # Create a CouchDB instance
-my $couch = Mojo::CouchDB->new('http://localhost:6984/books', 'username', 'password');
+my $couch = Mojo::CouchDB->new('http://localhost:6984', 'username', 'password');
+my $db = $couch->db('books');
+
+$db->create_db; # Create the database on the server
 
 # Make a document
 my $book = {
-    title => 'Nineteen Eighty Four',
-    author => 'George Orwell'
+	title => 'Nineteen Eighty Four',
+	author => 'George Orwell'
 };
 
 # Save your document to the database
-$book = $couch->save($book);
+$book = $db->save($book);
 
 # If _id is assigned to a hashref, save will update rather than create
-say $book->{_id}; # Automatically assigned when saving
-say $book->{_rev}; # Automatically assigned when saving
-
+say $book->{_id}; # Assigned when saving or getting
 $book->{title} = 'Dune';
 $book->{author} = 'Frank Herbert'
 
 # Re-save to update the document
-$book = $couch->save($book);
-
-say $book->{_id}; # Same id as above
+$book = $db->save($book);
 
 # Get the document as a hashref
-my $dune = $couch->get($book->{id});
+my $dune = $db->get($book->{_id});
 
-# Find first 5 books
-# See https://docs.couchdb.org/en/stable/api/database/find.html for the semantics of finding.
-my $books = $couch->find({ limit => 5, skip => 0, fields => [ 'title', 'author' ] });
+# You can also save many documents at a time
+my $books = $db->save_many([{title => 'book', author => 'John'}, { title => 'foo', author => 'bar' }])->{docs};
 ```
 
 ## Installation
@@ -50,18 +48,19 @@ This is an example of a [Mojolicious::Lite](https://docs.mojolicious.org/Mojolic
 [Mojo::CouchDB](#).
 
 ```perl
+use v5.36;
 use Mojolicious::Lite -signatures;
 use Mojo::CouchDB;
 
-helper user_db => sub {
-       state $user_db = Mojo::Couch->new('http://127.0.0.1:5984/users', 'username', 'password');
-};
+my $couch = Mojo::Couch->new('http://127.0.0.1:5984', 'username', 'password');
+
+helper user_db => sub { state $user_db = $couch->db('users') };
 
 get '/:user' => sub {
-    my $c    = shift;
-    my $user = $c->user_db->get($c->param('user'))
-       || return $c->rendered(404);
-    return $c->render(json => $user);
+	my $c    = shift;
+	my $user = $c->user_db->get($c->param('user'))
+		|| return $c->rendered(404);
+	return $c->render(json => $user);
 };
 
 app->start;
