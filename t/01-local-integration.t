@@ -53,10 +53,18 @@ my $daemon = Mojo::Server::Daemon->new(
 );
 my $port = $daemon->start->ports->[0];
 $c->{url} = Mojo::URL->new("http://127.0.0.1:$port/database");
+
+my $called = 0;
+{
+    no warnings 'redefine';
+    *Mojo::CouchDB::DB::create_db = sub { ++$called; }
+}
+
 my $couch = $c->db('database');
+
 $couch->ua->{ioloop} = $ioloop;
 
-ok $couch->create_db, 'Did create succeed?';
+ok $called, 'Was create_db called?';
 
 is $couch->save({name => 'foo'})->{name}, 'foo',    'Did save succeed?';
 is $couch->save({name => 'foo'})->{_id},  'foobar', 'Did save get id?';

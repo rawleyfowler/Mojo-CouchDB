@@ -182,7 +182,7 @@ sub _call_p {
         croak 'CouchDB encountered an error: '
             . $r->res->code . ' '
             . encode_json($r->res->json)
-            if (!$r->is_success);
+            unless $r->is_success;
 
         return $r->res->json;
     });

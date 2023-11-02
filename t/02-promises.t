@@ -45,9 +45,19 @@ my $daemon = Mojo::Server::Daemon->new(
 );
 my $port = $daemon->start->ports->[0];
 $c->{url} = Mojo::URL->new("http://127.0.0.1:$port/database");
+
+my $called;
+my $o = \&Mojo::CouchDB::DB::create_db;
+
+{
+    no warnings 'redefine';
+    *Mojo::CouchDB::DB::create_db = sub { ++$called }
+}
+
 my $couch = $c->db('database');
 $couch->ua->{ioloop} = $ioloop;
-ok $couch->create_db;
+ok $called, 'Was database created on startup?';
+
 Mojo::IOLoop->start;
 
 dies_ok { $couch->find_p } 'Does find_p die with no input?';

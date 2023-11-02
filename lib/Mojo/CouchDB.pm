@@ -18,6 +18,9 @@ sub db {
     return $self->dbs->{$db_name} if exists $self->dbs->{$db_name};
 
     my $db = Mojo::CouchDB::DB->new($self->url->path($db_name), $self->auth);
+
+    $db->create_db;    # This is an idempotent operation.
+
     $self->dbs->{$db_name} = $db;
 
     return $db;
